@@ -12,5 +12,7 @@ import RealmSwift
 class Category: Object {
     @objc dynamic var name : String = ""
     @objc dynamic var color : String = ""
+    @objc dynamic var isSelected: Bool = false
+    
     let categories = List<Task>()
 }

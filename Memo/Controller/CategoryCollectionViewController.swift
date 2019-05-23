@@ -69,6 +69,15 @@ class CategoryCollectionViewController: UICollectionViewController, UICollection
     }
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         
+        
+//         / Suggested Way
+//         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "categoryCell", for: indexPath) as! CategoryCollectionViewCell
+//         
+//         / do all the work inside cell class
+//         cell.config(category: Category, viewMode: CategoryCollectionViewController.Mode)
+//         return cell
+        
+        
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "categoryCell", for: indexPath) as! CategoryCollectionViewCell
         if let category = categories?[indexPath.row] {
             cell.categoryLabel?.text = category.name
@@ -80,7 +89,6 @@ class CategoryCollectionViewController: UICollectionViewController, UICollection
         } else if viewMode == .select {
             cell.selectImageView.isHidden = false
         }
-        
         cell.layer.cornerRadius = 5.0
         return cell
     }
@@ -93,14 +101,17 @@ class CategoryCollectionViewController: UICollectionViewController, UICollection
         case .select:
             if let selectedIndex = collectionView.indexPathsForSelectedItems.self {
                 selectedItems = selectedIndex
+                setRealmObjFlag(category: categories![indexPath.row], isSelected: true)
             }
+            
         }
     }
     
     override func collectionView(_ collectionView: UICollectionView, didDeselectItemAt indexPath: IndexPath) {
         if viewMode == .select {
             collectionView.deselectItem(at: indexPath, animated: true)
-            selectedItems.remove(at: indexPath.row)
+            selectedItems = collectionView.indexPathsForSelectedItems!//.remove(at: indexPath.row)
+            setRealmObjFlag(category: categories![indexPath.row], isSelected: false)
         }
     }
     
@@ -153,16 +164,24 @@ class CategoryCollectionViewController: UICollectionViewController, UICollection
         collectionView.reloadData()
     }
     
-    @objc func deleteCategory(at indexPath : IndexPath) {
-        if let categoryForDeletion = self.categories?[indexPath.row] {
+    func setRealmObjFlag(category: Category, isSelected: Bool) {
+        try! self.realm.write {
+            category.isSelected = isSelected
+        }
+    }
+    
+    @objc func deleteSelectedCategories() {
+        //if let categoryForDeletion = self.categories?[indexPath.row] {
+        let categoryForDeletion = realm.objects(Category.self).filter("isSelected == YES")
             do {
                 try self.realm.write {
+                    //self.realm.delete(categoryForDeletion)
                     self.realm.delete(categoryForDeletion)
                 }
             } catch {
                 print("Error deleting category, \(error)")
             }
-        }
+        //}
     }
     
     @objc func addButtonPressed(_ sender: UIBarButtonItem) {
@@ -193,10 +212,15 @@ class CategoryCollectionViewController: UICollectionViewController, UICollection
     
     @objc func doneButtonPressed(_ sender: UIBarButtonItem) {
         viewMode =  .view
-        for index in selectedItems {
-            deleteCategory(at: index)
-        }
+        //for index in selectedItems {
+            deleteSelectedCategories()
+        //}
         collectionView.deleteItems(at: selectedItems)
+        let cells = self.collectionView.visibleCells
+        cells.forEach { (cell) in
+            let cell = cell as? CategoryCollectionViewCell
+            cell?.selectImageView.isHidden = true
+        }
         collectionView.reloadData()
     }
     
